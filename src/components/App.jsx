@@ -1,4 +1,5 @@
-import React, { Component } from 'react';
+import { useEffect, useState } from 'react';
+
 import Notiflix from 'notiflix';
 
 import { fetchQuery } from './api';
@@ -9,80 +10,70 @@ import { Loader } from './Loader/Loader';
 import { ModalWindow } from './Modal/Modal';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 
-export class App extends Component {
-  state = {
-    searchQuery: '',
-    images: [],
-    page: 1,
-    totalImages: 0,
-    loading: false,
-    showModal: false,
-  };
+export const App = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalImages, setTotalImages] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
-  componentDidUpdate(prevProps, prevState) {
-    const { searchQuery, page } = this.state;
-    if (prevState.searchQuery !== searchQuery || prevState.page !== page) {
-      this.setState({ loading: true });
-
-      fetchQuery(searchQuery, page)
-        .then(resp =>
-          this.setState(prevState => ({
-            images: [...prevState.images, ...resp.images],
-            totalImages: resp.TotalHits,
-          }))
-        )
-        .catch(error => console.log(error))
-        .finally(() => this.setState({ loading: false }));
+  useEffect(() => {
+    if (!searchQuery) {
+      return;
     }
-  }
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const response = await fetchQuery(searchQuery, page);
+        setImages(prevImages => [...prevImages, ...response.images]);
+        setTotalImages(response.totalHits);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  searchQueryValue = value => {
-    if (value === this.state.searchQuery) {
+    fetchData();
+  }, [searchQuery, page]);
+
+  const searchQueryValue = value => {
+    if (value === searchQuery) {
       Notiflix.Notify.warning('Enter another search query!');
       return;
     }
-
-    this.setState({
-      searchQuery: value,
-      page: 1,
-      totalImages: 0,
-      images: [],
-    });
+    setSearchQuery(value);
   };
 
-  openImageModal = largeImageURL => {
-    this.setState({ showModal: largeImageURL });
+  const openImageModal = largeImageURL => {
+    setShowModal(largeImageURL);
   };
 
-  showModalStateReset = () => {
-    this.setState({ showModal: '' });
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-    }));
+  const showModalStateReset = () => {
+    setShowModal(false);
   };
-  render() {
-    const { images, showModal, loading, totalImages } = this.state;
-    return (
-      <Wrapper>
-        <SearchBar onSubmit={this.searchQueryValue} />
-        <ImageGallery images={images} openImageModal={this.openImageModal} />
-        {loading && <Loader />}
-        {totalImages !== images.length && !loading && (
-          <Button onClick={this.handleLoadMore} />
-        )}
 
-        {showModal && (
-          <ModalWindow
-            showModal={showModal}
-            showModalStateReset={this.showModalStateReset}
-            largeImageURL={showModal}
-          />
-        )}
-      </Wrapper>
-    );
-  }
-}
-export default App;
+  return (
+    <Wrapper>
+      <SearchBar onSubmit={searchQueryValue} />
+      <ImageGallery images={images} openImageModal={openImageModal} />
+      {loading && <Loader />}
+      {totalImages !== images.length && !loading && (
+        <Button onClick={handleLoadMore} />
+      )}
+
+      {showModal && (
+        <ModalWindow
+          showModal={showModal}
+          showModalStateReset={showModalStateReset}
+          largeImageURL={showModal}
+        />
+      )}
+    </Wrapper>
+  );
+};
