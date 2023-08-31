@@ -44,6 +44,9 @@ export const App = () => {
       return;
     }
     setSearchQuery(value);
+    setImages([]);
+    setPage(1);
+    setTotalImages(0);
   };
 
   const openImageModal = largeImageURL => {
